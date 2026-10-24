@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NUMILOG — Prévision d'activité & Workforce Planning</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <script type="module" crossorigin src="./assets/index-DfVEJsWR.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CG_epe1i.css">
+  </head>
+  <body>
+    <div id="loading" class="loading" hidden>
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <p>Calcul en cours…</p>
+      </div>
+    </div>
+
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand-logo" src="./numilog-logo.png" alt="NUMILOG" />
+        <div>
+          <h1 id="app-title">Prévision d'activité &amp; Workforce Planning</h1>
+          <p class="subtitle" id="app-subtitle">Volumes palettes et dimensionnement OPL</p>
+        </div>
+      </div>
+      <div class="top-meta">
+        <div><span>Historique</span><strong id="meta-range">—</strong></div>
+        <div><span>Horizon</span><strong id="meta-horizon">—</strong></div>
+        <div><span>Modèle</span><strong id="meta-model">—</strong></div>
+        <div><span id="meta-err-label">Erreur</span><strong id="meta-wape">—</strong></div>
+      </div>
+    </header>
+
+    <div id="mode-banner" class="mode-banner" hidden></div>
+
+    <section class="toolbar">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Pilotage</span>
+        <label>Plateforme
+          <select id="filter-platform"></select>
+        </label>
+        <label>Activité
+          <select id="filter-activity"></select>
+        </label>
+        <label>Horizon
+          <select id="filter-horizon">
+            <option value="7">7 jours</option>
+            <option value="14">14 jours</option>
+            <option value="30">30 jours</option>
+            <option value="60">60 jours</option>
+            <option value="90">90 jours</option>
+            <option value="eoy2026" selected>Fin 2026</option>
+            <option value="eoy2027">Fin 2027</option>
+          </select>
+        </label>
+        <label>Flux
+          <select id="filter-flow">
+            <option value="total" selected>TOTAL IN+OUT</option>
+            <option value="in">IN</option>
+            <option value="out">OUT</option>
+          </select>
+        </label>
+        <label>Modèle
+          <select id="filter-model"></select>
+        </label>
+        <button type="button" class="btn primary" id="btn-refresh">Actualiser</button>
+      </div>
+      <div class="toolbar-group toolbar-data">
+        <span class="toolbar-label">Données</span>
+        <label class="btn file-btn">Import IN<input type="file" id="file-in" accept=".xlsx,.xls,.csv" hidden /></label>
+        <label class="btn file-btn">Import OUT<input type="file" id="file-out" accept=".xlsx,.xls,.csv" hidden /></label>
+      </div>
+    </section>
+    <p id="import-live" class="import-live" hidden></p>
+
+    <div class="chrome-sticky">
+    <nav class="nav" id="nav" aria-label="Parcours application">
+      <div class="nav-group">
+        <span class="nav-group-label">1 · Décider</span>
+        <button type="button" data-view="dashboard" class="active">Synthèse</button>
+        <button type="button" data-view="prevision">Prévision</button>
+        <button type="button" data-view="workforce">OPL / Shifts</button>
+        <button type="button" data-view="planning">Planning</button>
+        <button type="button" data-view="realise">Réalisé</button>
+      </div>
+      <div class="nav-group">
+        <span class="nav-group-label">2 · Comprendre</span>
+        <button type="button" data-view="historique">Historique</button>
+        <button type="button" data-view="analyse">Analyse</button>
+        <button type="button" data-view="comportement">Comportement</button>
+        <button type="button" data-view="calendrier">Calendrier DZ</button>
+      </div>
+      <div class="nav-group">
+        <span class="nav-group-label">3 · Méthode</span>
+        <button type="button" data-view="modeles">Modèles</button>
+        <button type="button" data-view="donnees">Sources</button>
+      </div>
+    </nav>
+
+    <div class="journey" id="journey">
+      <button type="button" class="journey-step active" data-view="dashboard">
+        <span class="n">1</span><span class="t">Synthèse</span><span class="d">KPI · alertes · courbe</span>
+      </button>
+      <span class="journey-sep" aria-hidden="true"></span>
+      <button type="button" class="journey-step" data-view="prevision">
+        <span class="n">2</span><span class="t">Prévision</span><span class="d">Tableau · export</span>
+      </button>
+      <span class="journey-sep" aria-hidden="true"></span>
+      <button type="button" class="journey-step" data-view="workforce">
+        <span class="n">3</span><span class="t">OPL</span><span class="d">Buffer · scénarios</span>
+      </button>
+      <span class="journey-sep" aria-hidden="true"></span>
+      <button type="button" class="journey-step" data-view="planning">
+        <span class="n">4</span><span class="t">Planning</span><span class="d">Générer · capture</span>
+      </button>
+      <span class="journey-sep" aria-hidden="true"></span>
+      <button type="button" class="journey-step" data-view="realise">
+        <span class="n">5</span><span class="t">Réalisé</span><span class="d">Saisie · local</span>
+      </button>
+      <span class="journey-sep muted" aria-hidden="true"></span>
+      <button type="button" class="journey-step secondary" data-view="modeles">
+        <span class="n">?</span><span class="t">Pourquoi ce modèle</span>
+      </button>
+    </div>
+    </div>
+
+    <main>
+      <!-- DASHBOARD -->
+      <section class="view active" data-view="dashboard">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 1 · Décider</p>
+            <h2>Synthèse exploitation</h2>
+            <p class="view-desc">Volumes prévus, alertes et courbe historique + prévision.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn primary" data-jump="prevision">→ Tableau prévision</button>
+            <button type="button" class="btn" data-jump="workforce">→ Paramètres OPL</button>
+          </div>
+        </header>
+        <div class="kpis" id="kpi-row"></div>
+        <div class="grid-2">
+          <article class="card">
+            <h2>Alertes opérationnelles</h2>
+            <ul id="alerts-list" class="alerts"></ul>
+            <div id="vigilance-box" class="vigilance"></div>
+          </article>
+          <article class="card" id="diagnostic-box"></article>
+        </div>
+        <article class="card">
+          <h2>Historique réel + prévision</h2>
+          <div class="chart-box tall"><canvas id="chart-forecast"></canvas></div>
+          <div id="forecast-note"></div>
+        </article>
+        <div class="grid-2">
+          <article class="card" id="trend-box"></article>
+          <article class="card" id="behavior-box"></article>
+        </div>
+      </section>
+
+      <!-- HISTORIQUE -->
+      <section class="view" data-view="historique">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 2 · Comprendre</p>
+            <h2>Historique des volumes</h2>
+            <p class="view-desc">Série réelle CEVIFOOD, moyennes mobiles et IN / OUT.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="analyse">→ Analyse saisonnalité</button>
+            <button type="button" class="btn" data-jump="comportement">→ Comportement depuis 2022</button>
+            <button type="button" class="btn" data-jump="dashboard">← Synthèse</button>
+          </div>
+        </header>
+        <article class="card">
+          <h2>Courbe historique (réel)</h2>
+          <p class="hint">MA 7 et MA 30 = moyennes mobiles sur l'historique — ce ne sont pas des prévisions.</p>
+          <div class="chart-box tall"><canvas id="chart-history"></canvas></div>
+        </article>
+        <div class="grid-2">
+          <article class="card">
+            <h2>IN / OUT / TOTAL (180 j)</h2>
+            <div class="chart-box"><canvas id="chart-inout"></canvas></div>
+          </article>
+          <article class="card">
+            <h2>Distribution des volumes</h2>
+            <div class="chart-box"><canvas id="chart-dist"></canvas></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ANALYSE -->
+      <section class="view" data-view="analyse">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 2 · Comprendre</p>
+            <h2>Analyse saisonnalité &amp; anomalies</h2>
+            <p class="view-desc">Jours de semaine, mois, heatmap, YoY et anomalies.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="comportement">→ Comportement depuis 2022</button>
+            <button type="button" class="btn" data-jump="calendrier">→ Calendrier DZ</button>
+            <button type="button" class="btn" data-jump="prevision">→ Prévision</button>
+          </div>
+        </header>
+        <div class="grid-2">
+          <article class="card">
+            <h2>Par jour de semaine</h2>
+            <div class="chart-box"><canvas id="chart-weekday"></canvas></div>
+            <div class="table-wrap">
+              <table id="table-weekday" class="data">
+                <thead><tr><th>Jour</th><th class="num">Moyenne</th><th class="num">Médiane</th><th class="num">P95</th><th class="num">σ</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h2>Par mois</h2>
+            <div class="chart-box"><canvas id="chart-month"></canvas></div>
+            <div class="table-wrap">
+              <table id="table-month" class="data">
+                <thead><tr><th>Mois</th><th class="num">Moy. / j</th><th class="num">Total</th><th class="num">Médiane</th><th class="num">P95</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+        <article class="card">
+          <h2>Heatmap — mois × jour de semaine (volume moyen)</h2>
+          <div id="heatmap-box"></div>
+        </article>
+        <article class="card" id="seasonality-box">
+          <h2>Signaux de saisonnalité &amp; tendance</h2>
+          <div id="seasonality-detail"></div>
+        </article>
+        <div class="grid-2">
+          <article class="card">
+            <h2>Évolution année par année</h2>
+            <div class="chart-box"><canvas id="chart-years"></canvas></div>
+            <p id="years-note" class="hint"></p>
+            <div class="table-wrap">
+              <table id="table-years" class="data">
+                <thead><tr><th>Année</th><th class="num">Total</th><th class="num">Moy. / j</th><th class="num">Jours actifs</th><th class="num">Max</th><th>Période</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h2>Anomalies (IQR / Z-score)</h2>
+            <p class="hint">Conservées par défaut dans le training. Option d'exclusion dans les paramètres.</p>
+            <div class="table-wrap tall">
+              <table id="table-anomalies" class="data">
+                <thead><tr><th>Date</th><th class="num">Volume</th><th class="num">Écart moy.</th><th>Type</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- COMPORTEMENT CLIENT -->
+      <section class="view" data-view="comportement">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 2 · Comprendre</p>
+            <h2>Comportement client depuis 2022</h2>
+            <p class="view-desc">Fluctuations CEVIFOOD (CEF+ICF, palettes) : années, mois, semaines, volatilité et YoY.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="analyse">← Saisonnalité</button>
+            <button type="button" class="btn" data-jump="calendrier">→ Calendrier DZ</button>
+          </div>
+        </header>
+        <div class="kpis" id="behavior-kpis"></div>
+        <article class="card" id="behavior-insights"></article>
+        <article class="card">
+          <h2>Fluctuation hebdomadaire depuis 2022</h2>
+          <p class="hint">Moyenne journalière de chaque semaine ISO + tendance 13 semaines. Agrégat CEVIFOOD, pas de détail SKU.</p>
+          <div class="chart-box tall"><canvas id="chart-behavior-weekly"></canvas></div>
+        </article>
+        <article class="card">
+          <h2>Moyenne hebdomadaire TOTAL par année</h2>
+          <p class="hint">
+            Une courbe = une année. Axe X = semaine ISO (S1→S52). Volume = moyenne journalière TOTAL (IN+OUT) de la semaine.
+            Comparez la forme et le niveau des fluctuations d'une année sur l'autre.
+          </p>
+          <div class="chart-box tall"><canvas id="chart-behavior-weekly-by-year"></canvas></div>
+          <p class="hint" id="behavior-weekly-by-year-note"></p>
+        </article>
+        <div class="grid-2">
+          <article class="card">
+            <h2>Volume moyen / jour par année</h2>
+            <p class="hint">Les années marquées * ne couvrent pas 12 mois complets — comparer les moyennes/j, pas les totaux.</p>
+            <div class="chart-box"><canvas id="chart-behavior-years"></canvas></div>
+          </article>
+          <article class="card">
+            <h2>Volatilité glissante (CV 30 j)</h2>
+            <p class="hint">Coefficient de variation sur 30 jours, échantillonné une fois par semaine. Plus haut = activité plus irrégulière.</p>
+            <div class="chart-box"><canvas id="chart-behavior-vol"></canvas></div>
+          </article>
+        </div>
+        <article class="card">
+          <h2>Profil mensuel superposé (2022 → aujourd'hui)</h2>
+          <p class="hint">Chaque courbe est une année. Un mois manquant (année partielle) n'est pas tracé.</p>
+          <div class="chart-box tall"><canvas id="chart-behavior-months"></canvas></div>
+        </article>
+        <article class="card">
+          <h2>Heatmap année × mois (moyenne palettes / jour)</h2>
+          <p class="hint">Lecture rapide des creux et pics saisonniers d'une année sur l'autre.</p>
+          <div class="heatmap-scroll" id="behavior-heatmap"></div>
+        </article>
+        <div class="grid-2">
+          <article class="card">
+            <h2>Écart YoY par mois</h2>
+            <p class="hint">Variation % du volume moyen/j vs le même mois de l'année précédente.</p>
+            <div class="chart-box"><canvas id="chart-behavior-yoy"></canvas></div>
+          </article>
+          <article class="card">
+            <h2>Profil jour de semaine par année</h2>
+            <p class="hint">Lundi → dimanche. Permet de voir si le rythme client a bougé.</p>
+            <div class="chart-box"><canvas id="chart-behavior-dow"></canvas></div>
+          </article>
+        </div>
+        <article class="card">
+          <h2>IN / OUT mensuels depuis 2022</h2>
+          <p class="hint">Moyenne journalière par mois. TOTAL = IN + OUT agrégé CEVIFOOD.</p>
+          <div class="chart-box tall"><canvas id="chart-behavior-inout"></canvas></div>
+        </article>
+        <article class="card">
+          <h2>Tableau annuel depuis 2022</h2>
+          <div class="table-wrap">
+            <table id="table-behavior-years" class="data">
+              <thead>
+                <tr>
+                  <th>Année</th>
+                  <th class="num">Jours</th>
+                  <th class="num">Moy. / j</th>
+                  <th class="num">Médiane</th>
+                  <th class="num">P95</th>
+                  <th class="num">CV</th>
+                  <th class="num">YoY</th>
+                  <th class="num">IN moy.</th>
+                  <th class="num">OUT moy.</th>
+                  <th>Période</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- PREVISION -->
+      <section class="view" data-view="prevision">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 1 · Décider</p>
+            <h2>Tableau prévisionnel</h2>
+            <p class="view-desc">IN / OUT / Total, calendrier DZ, shifts et OPL. Export CSV / Excel / plan 7 j.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn primary" data-jump="workforce">→ Régler OPL</button>
+            <button type="button" class="btn" data-jump="dashboard">← Synthèse</button>
+          </div>
+        </header>
+        <article class="card">
+          <div class="card-head">
+            <h2>Détail jour par jour</h2>
+            <div class="card-actions">
+              <input type="search" id="table-search" placeholder="Filtrer date / calendrier / volume…" />
+              <button type="button" class="btn" id="btn-export-week">Plan 7 j</button>
+              <button type="button" class="btn" id="btn-export-csv">Export CSV</button>
+              <button type="button" class="btn" id="btn-export-xlsx">Export Excel</button>
+            </div>
+          </div>
+          <p class="hint">IN / OUT / Total = <strong>prévisions</strong>. OPL = besoin théorique (6,5 h × 22 pal/h).</p>
+          <div class="table-wrap tall">
+            <table id="table-forecast" class="data">
+              <thead>
+                <tr>
+                  <th>Date</th><th>Jour</th><th>Calendrier</th>
+                  <th class="num">IN</th><th class="num">OUT</th><th class="num">Total</th>
+                  <th class="num">Shift 1</th><th class="num">OPL 1</th>
+                  <th class="num">Shift 2</th><th class="num">OPL 2</th>
+                  <th class="num">Shift 3</th><th class="num">OPL 3</th>
+                  <th class="num">OPL total</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+        <div class="grid-2">
+          <article class="card">
+            <h2>Volume prévu par shift</h2>
+            <div class="chart-box"><canvas id="chart-shifts-vol"></canvas></div>
+          </article>
+          <article class="card">
+            <h2>OPL théorique par shift</h2>
+            <div class="chart-box"><canvas id="chart-shifts-opl"></canvas></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- WORKFORCE -->
+      <section class="view" data-view="workforce">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 1 · Décider</p>
+            <h2>Dimensionnement OPL</h2>
+            <p class="view-desc">Productivité, buffer, mix 3 shifts et scénarios. OPL = besoin théorique.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="prevision">← Tableau prévision</button>
+            <button type="button" class="btn primary" data-jump="planning">→ Générer le planning</button>
+          </div>
+        </header>
+        <article class="card">
+          <h2>Paramètres de dimensionnement</h2>
+          <div id="workforce-note"></div>
+          <form id="params-form" class="params-grid">
+            <label>Shift 1 (0–1 ou %) <input name="shift1" type="number" step="0.01" min="0" max="100" /></label>
+            <label>Shift 2 <input name="shift2" type="number" step="0.01" min="0" max="100" /></label>
+            <label>Shift 3 <input name="shift3" type="number" step="0.01" min="0" max="100" /></label>
+            <label>Heures productives / OPL / shift <input name="hoursPerOplShift" type="number" step="0.1" min="0.1" /></label>
+            <label>Productivité (palettes / OPL / heure) <input name="palettesPerHour" type="number" step="0.1" min="0.1" /></label>
+            <label>Capacité calculée (pal / OPL / shift) <input name="productivityPerOpl" type="number" step="0.1" min="1" readonly /></label>
+            <label>Seuil alerte OPL <input name="oplAlertThreshold" type="number" step="1" min="1" /></label>
+            <label>Buffer OPL (%) <input name="oplBufferPct" type="number" step="1" min="0" max="50" /></label>
+            <label>Scénario staffing
+              <select name="scenario">
+                <option value="basse">Basse (−10 %)</option>
+                <option value="base" selected>Base</option>
+                <option value="haute">Haute (+10 %)</option>
+              </select>
+            </label>
+            <label class="check"><input name="excludeAnomaliesFromTraining" type="checkbox" /> Exclure anomalies du training</label>
+          </form>
+          <p class="hint">What-if volume (choc sur la prévision, pas sur l'historique) :</p>
+          <div class="shock-row" id="shock-row">
+            <button type="button" data-shock="0" class="active">0 %</button>
+            <button type="button" data-shock="5">+5 %</button>
+            <button type="button" data-shock="10">+10 %</button>
+            <button type="button" data-shock="15">+15 %</button>
+            <button type="button" data-shock="-10">−10 %</button>
+          </div>
+          <p class="hint persist-hint" id="persist-hint">Paramètres sauvegardés localement — conservés après refresh.</p>
+        </article>
+      </section>
+
+      <!-- PLANNING NUMIPLAN -->
+      <section class="view" data-view="planning">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 1 · Décider</p>
+            <h2>Planning mensuel des OPL</h2>
+            <p class="view-desc">Besoins OPL de l'activité affichée → affectation Matin / Après-midi / Nuit.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="workforce">← Paramètres OPL</button>
+            <button type="button" class="btn" data-jump="prevision">← Prévision</button>
+          </div>
+        </header>
+
+        <div class="planner">
+          <article class="card planner-toolbar">
+            <div class="planner-toolbar-row">
+              <label>Mois
+                <select id="planner-month"></select>
+              </label>
+              <label>Année
+                <select id="planner-year"></select>
+              </label>
+              <button type="button" class="btn primary" id="btn-planner-generate">Générer le planning</button>
+              <div id="planner-export-group" class="planner-export" hidden>
+                <button type="button" class="btn" id="btn-planner-capture">Capture PNG</button>
+                <button type="button" class="btn" id="btn-planner-excel">Excel</button>
+                <button type="button" class="btn" id="btn-planner-print">Imprimer</button>
+              </div>
+            </div>
+            <p class="hint">Les besoins M / A / N sont les OPL théoriques (shift 1 / 2 / 3). L'effectif et les soldes CA / récup sont conservés localement.</p>
+          </article>
+
+          <div class="planner-tabs" id="planner-tabs" role="tablist">
+            <button type="button" class="active" data-planner-tab="employees">1. Effectif</button>
+            <button type="button" data-planner-tab="shifts">2. Besoins &amp; horaires</button>
+            <button type="button" data-planner-tab="results">3. Planning</button>
+            <button type="button" data-planner-tab="help">Règles R1–R12</button>
+          </div>
+
+          <div class="planner-tab active" data-planner-tab="employees">
+            <div class="grid-2 planner-grid">
+              <article class="card">
+                <h2>Ajouter du personnel</h2>
+                <label class="btn file-btn block">Importer Excel (colonne Nom, CA, Récup)
+                  <input type="file" id="import-emp" accept=".xlsx,.xls,.csv" hidden />
+                </label>
+                <div class="params-grid planner-emp-form">
+                  <label>Nom complet <input id="emp-name" type="text" placeholder="Ex. Benali A." /></label>
+                  <label>Droit CA (j) <input id="emp-ca" type="number" min="0" step="1" placeholder="22" /></label>
+                  <label>Droit récup (j) <input id="emp-recup" type="number" min="0" step="1" placeholder="4" /></label>
+                </div>
+                <div class="actual-actions">
+                  <button type="button" class="btn primary" id="btn-emp-add">Ajouter</button>
+                  <button type="button" class="btn" id="btn-emp-clear">Tout supprimer</button>
+                </div>
+              </article>
+              <article class="card">
+                <h2>Liste du personnel (<span id="emp-count">0</span>)</h2>
+                <div class="table-wrap tall">
+                  <table class="data">
+                    <thead>
+                      <tr><th>Nom</th><th class="num">Solde CA</th><th class="num">Solde récup</th><th></th></tr>
+                    </thead>
+                    <tbody id="emp-list-body"></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="planner-tab" data-planner-tab="shifts">
+            <div class="grid-2 planner-grid">
+              <div>
+                <article class="card">
+                  <h2>Horaires des shifts</h2>
+                  <div id="shift-config-container" class="planner-shifts"></div>
+                </article>
+                <article class="card" id="planner-regime">
+                  <h2>Ouverture d'activité</h2>
+                  <label class="check"><input type="radio" name="activity-regime" value="5" /> Régime 5/7 (coeff 1,11)</label>
+                  <label class="check"><input type="radio" name="activity-regime" value="6" /> Régime 6/7 (coeff 1,26)</label>
+                  <label class="check"><input type="radio" name="activity-regime" value="7" checked /> Régime 7/7 (coeff 1,40)</label>
+                  <div id="staffing-analysis" class="planner-analysis" hidden>
+                    <h3>Analyse du besoin réel</h3>
+                    <p>Pic de besoin : <strong id="stat-peak">0</strong></p>
+                    <p>Effectif calculé : <strong id="stat-needed">0</strong></p>
+                    <p>Effectif saisi : <strong id="stat-current">0</strong></p>
+                    <p id="stat-status"></p>
+                  </div>
+                </article>
+              </div>
+              <article class="card">
+                <h2>Besoins opérationnels (OPL / jour)</h2>
+                <div class="actual-actions">
+                  <button type="button" class="btn primary" id="btn-needs-opl">Charger les besoins OPL</button>
+                  <label class="btn file-btn">Importer Excel besoins
+                    <input type="file" id="import-needs" accept=".xlsx,.xls,.csv" hidden />
+                  </label>
+                </div>
+                <p class="hint" id="needs-source-note">Colonnes attendues : Jour, Matin/M, A, Nuit/N — ou opl1 / opl2 / opl3.</p>
+                <div id="needs-table-container" hidden>
+                  <div class="table-wrap tall">
+                    <table class="data">
+                      <thead>
+                        <tr>
+                          <th>Jour</th>
+                          <th class="num">Matin</th>
+                          <th class="num">A-M</th>
+                          <th class="num">Nuit</th>
+                          <th class="num">Total</th>
+                          <th>Source</th>
+                        </tr>
+                      </thead>
+                      <tbody id="needs-preview-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="planner-tab" data-planner-tab="results">
+            <article class="card planner-board" id="planner-capture">
+              <div class="print-only" id="print-header-title">Planning mensuel</div>
+              <div class="card-head planner-board-head">
+                <div>
+                  <p class="view-kicker" id="schedule-kicker">Planning</p>
+                  <h2 id="schedule-live-title">Tableau de bord mensuel</h2>
+                </div>
+                <div class="planner-legend no-capture">
+                  <span class="shift shift-M">Matin</span>
+                  <span class="shift shift-A">Après-midi</span>
+                  <span class="shift shift-N">Nuit</span>
+                  <span class="shift shift-R">Repos</span>
+                  <span class="shift shift-S">Surplus</span>
+                  <span class="shift shift-C">Congé</span>
+                  <span class="shift shift-CP">Récup</span>
+                </div>
+              </div>
+              <div class="planner-table-wrap">
+                <table class="planner-grid-table">
+                  <thead id="schedule-header"></thead>
+                  <tbody id="schedule-body"></tbody>
+                  <tfoot id="schedule-footer"></tfoot>
+                </table>
+              </div>
+            </article>
+          </div>
+
+          <div class="planner-tab" data-planner-tab="help">
+            <article class="card">
+              <h2>Logique &amp; règles (R1–R12)</h2>
+              <ul class="pattern-list">
+                <li><strong>R1</strong> — Respect des besoins prioritaires importés (Matin, AM, Nuit).</li>
+                <li><strong>R2</strong> — Jours non travaillés par défaut = Repos (R).</li>
+                <li><strong>R3</strong> — Attribution automatique de congés (C) selon le surplus d'effectif.</li>
+                <li><strong>R4</strong> — Priorité aux plus gros soldes de congés restants.</li>
+                <li><strong>R5</strong> — Alternance hebdomadaire des congés (éviter deux semaines de suite).</li>
+                <li><strong>R6</strong> — Cycle circadien : Matin → Après-midi → Nuit.</li>
+                <li><strong>R7</strong> — Reprise du cycle (M ou A) après une période de repos.</li>
+                <li><strong>R8</strong> — Blocage d'un shift sur 3 jours consécutifs minimum.</li>
+                <li><strong>R9</strong> — Repos obligatoire de 2 jours après un service de nuit.</li>
+                <li><strong>R10</strong> — Utilisation des récupérations (CP) si surplus et solde disponible.</li>
+                <li><strong>R11</strong> — Surplus sans solde congé/récup : l'employé reste sur son shift (S).</li>
+                <li><strong>R12</strong> — Régime 40 h : 5 jours travaillés et 2 repos par semaine.</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- REALISE -->
+      <section class="view" data-view="realise">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 1 · Décider</p>
+            <h2>Suivi prévision vs réalisé</h2>
+            <p class="view-desc">Saisie du volume réel du jour. Conservé localement après refresh.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="dashboard">← Synthèse</button>
+            <button type="button" class="btn" data-jump="workforce">→ OPL</button>
+            <button type="button" class="btn" data-jump="planning">→ Planning</button>
+          </div>
+        </header>
+        <article class="card">
+          <h2>Saisir un réalisé</h2>
+          <form id="actual-form" class="params-grid actual-form">
+            <label>Date <input name="date" type="date" required /></label>
+            <label>Total palettes <input name="totalPal" type="number" step="1" min="0" required /></label>
+            <label>IN (optionnel) <input name="inPal" type="number" step="1" min="0" /></label>
+            <label>OUT (optionnel) <input name="outPal" type="number" step="1" min="0" /></label>
+            <label class="span-2">Note <input name="note" type="text" maxlength="120" placeholder="Ex. pic client / fermeture partielle…" /></label>
+            <div class="actual-actions span-2">
+              <button type="submit" class="btn primary">Enregistrer</button>
+              <button type="button" class="btn" id="btn-actual-delete">Supprimer la date</button>
+              <button type="button" class="btn" id="btn-clear-persist">Effacer toutes les saisies locales</button>
+            </div>
+          </form>
+          <p class="hint" id="actual-save-status">Les réalisés sont stockés dans localStorage de ce navigateur.</p>
+        </article>
+        <div class="kpis" id="actual-kpis"></div>
+        <article class="card">
+          <div class="card-head">
+            <h2>Comparaison prévision (verrouillée) vs réalisé</h2>
+            <div class="card-actions">
+              <input type="search" id="actual-search" placeholder="Filtrer date…" />
+            </div>
+          </div>
+          <p class="hint">La prévision du jour est figée dès la première saisie. Les jours de volume très faible (inventaire / grève) sont écartés de l'analyse de motifs.</p>
+          <div id="actual-pattern-box" class="pattern-box"></div>
+          <div class="table-wrap tall">
+            <table id="table-actuals" class="data">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th class="num">Prévision</th>
+                  <th class="num">Réalisé</th>
+                  <th class="num">Écart</th>
+                  <th class="num">Erreur %</th>
+                  <th class="num">Fiabilité %</th>
+                  <th>Note</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- MODELES -->
+      <section class="view" data-view="modeles">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 3 · Méthode</p>
+            <h2>Performance des modèles</h2>
+            <p class="view-desc">Chaque lundi de 2026, les 7 jours sont prévus avec le réalisé déjà connu. C'est le plan d'effectif, jour par jour. Critère = MAPE jour.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="calendrier">→ Calendrier DZ</button>
+            <button type="button" class="btn" data-jump="dashboard">← Synthèse</button>
+          </div>
+        </header>
+        <div id="selection-box"></div>
+        <article class="card">
+          <h2>Trois règles pour le jour de la semaine à programmer</h2>
+          <div class="chart-box"><canvas id="chart-models"></canvas></div>
+          <div class="table-wrap">
+            <table id="table-models" class="data">
+              <thead>
+                <tr><th>Rang</th><th>Méthode</th><th class="num">MAPE jour</th><th class="num">MAPE semaine</th><th class="num">MAPE mois</th><th class="num">WAPE jour</th><th>Paramètres</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="card">
+          <h2>Fenêtres de backtesting</h2>
+          <div class="table-wrap">
+            <table id="table-windows" class="data">
+              <thead>
+                <tr><th>Fenêtre</th><th>Type</th><th class="num">Amorce</th><th class="num">Jours test</th><th class="num">MAPE mois</th><th class="num">MAPE jour</th><th class="num">MAE jour</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="card">
+          <h2>Fenêtre backtesting — réel vs prévision (jour par jour)</h2>
+          <p class="hint" id="bt-detail-note">
+            Fiabilité % = 100 × (1 − |réel − prévision| / max(réel, 1)). Ratio % = réel / prévision × 100.
+          </p>
+          <div id="bt-reliability-kpis" class="stat-grid compact"></div>
+          <div id="bt-pattern-box" class="pattern-box"></div>
+          <div class="chart-box tall"><canvas id="chart-bt-detail"></canvas></div>
+          <div class="table-wrap tall">
+            <table id="table-bt-days" class="data">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th class="num">Réel</th>
+                  <th class="num">Prévision</th>
+                  <th class="num">Écart</th>
+                  <th class="num">Erreur %</th>
+                  <th class="num">Réel/Prév. %</th>
+                  <th class="num">Fiabilité %</th>
+                  <th>Filtre</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- CALENDRIER DZ -->
+      <section class="view" data-view="calendrier">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 2 · Comprendre</p>
+            <h2>Calendrier Algérie</h2>
+            <p class="view-desc">Ramadan, Aïd, fériés, pré-Ramadan — facteurs appris (années récentes pondérées).</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="modeles">→ Modèles</button>
+            <button type="button" class="btn" data-jump="comportement">← Comportement</button>
+          </div>
+        </header>
+        <article class="card" id="calendar-summary"></article>
+        <article class="card">
+          <h2>Comportement client année par année (dont 2026 test)</h2>
+          <p class="hint">Écart % = moyenne de la période vs jours ouvrés « normaux » de la même année. Hijri décalé chaque année.</p>
+          <div id="calendar-year-insights" class="hint"></div>
+          <div class="table-wrap">
+            <table id="table-cal-years" class="data">
+              <thead>
+                <tr>
+                  <th>Année</th>
+                  <th>Début Ramadan</th>
+                  <th class="num">Normal</th>
+                  <th class="num">Pré-Ram. %</th>
+                  <th class="num">Ramadan %</th>
+                  <th class="num">Aïd Fitr %</th>
+                  <th class="num">Aïd Adha %</th>
+                  <th class="num">Fériés %</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+        <div class="grid-2">
+          <article class="card">
+            <h2>Facteurs calendrier appris (vs jour normal)</h2>
+            <div class="table-wrap">
+              <table id="table-cal-factors" class="data">
+                <thead>
+                  <tr><th>Type de jour</th><th class="num">n</th><th class="num">Moy. pal.</th><th class="num">Écart %</th><th class="num">Facteur</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <p class="hint">Facteur &lt; 1 = volume plus bas ; &gt; 1 = plus haut. Hijri ≈ −10/11 j par an.</p>
+          </article>
+          <article class="card">
+            <h2>Agenda Ramadan / Aïd / fériés (→ 2027)</h2>
+            <div class="table-wrap tall">
+              <table id="table-cal-agenda" class="data">
+                <thead><tr><th>Début</th><th>Fin</th><th>Événement</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- DONNEES -->
+      <section class="view" data-view="donnees">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 3 · Méthode</p>
+            <h2>Sources &amp; légende</h2>
+            <p class="view-desc">Imports Excel, série 703, légende réel / prévision / paramètre.</p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn primary" data-jump="dashboard">→ Retour synthèse</button>
+          </div>
+        </header>
+        <article class="card">
+          <h2>Statut des données</h2>
+          <div id="data-status"></div>
+        </article>
+        <article class="card">
+          <h2>Suivi prévision vs réalisé</h2>
+          <p class="hint">Saisie directe dans l'onglet <strong>Réalisé</strong> · sauvegarde <code>localStorage</code> · conserve au refresh. Aucune donnée n'est envoyée à un serveur.</p>
+          <p id="persist-summary" class="hint"></p>
+          <button type="button" class="btn" data-jump="realise">→ Ouvrir la saisie réalisé</button>
+        </article>
+        <article class="card">
+          <h2>Légende métier</h2>
+          <ul class="legend">
+            <li><strong>Donnée réelle</strong> — volume palette issu des Excel IN/OUT (CEF+ICF).</li>
+            <li><strong>Prévision</strong> — sortie du modèle retenu après backtesting.</li>
+            <li><strong>Paramètre métier</strong> — productivité OPL et mix de shifts saisis par l'utilisateur.</li>
+            <li><strong>Besoin OPL</strong> — estimation théorique, pas un effectif disponible.</li>
+          </ul>
+        </article>
+      </section>
+    </main>
+
+    <div id="planner-toast" class="planner-toast" role="status">
+      <span id="planner-toast-msg"></span>
+    </div>
+
+    <footer>
+      <span><strong>NUMILOG</strong> · prévision volumes &amp; OPL · calcul local navigateur</span>
+      <span>Le modèle n'est jamais « le meilleur » en absolu — il est retenu selon le critère WAPE multi-fenêtres.</span>
+    </footer>
+
+  </body>
+</html>

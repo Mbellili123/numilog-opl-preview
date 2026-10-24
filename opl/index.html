@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Numilog — Prévision volumes &amp; OPL</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .plf-rail { display:flex; flex-direction:column; gap:.4rem; min-width:11.5rem; }
+      .plf-btn { text-align:left; border:1px solid var(--line); background:#fff; border-radius:10px; padding:.55rem .7rem; cursor:pointer; }
+      .plf-btn.active { border-color:var(--accent, var(--navy)); box-shadow:inset 3px 0 0 var(--accent, var(--navy)); }
+      .plf-btn small { display:block; color:var(--muted); }
+      .layout-opl { display:grid; grid-template-columns: 12.5rem 1fr; gap:1.25rem; padding: 0 var(--pad-x) 3rem; }
+      .badge { display:inline-block; font-size:.75rem; padding:.1rem .45rem; border-radius:999px; background:var(--surface-2); }
+      .badge.active { background:var(--ok-bg); color:var(--ok); }
+      .badge.recente { background:var(--watch-bg); color:var(--watch); }
+      .badge.arretee { background:var(--risk-bg); color:var(--risk); }
+      .toolbar-opl { display:flex; flex-wrap:wrap; gap:.75rem 1rem; align-items:end; }
+      .muted-note { color:var(--muted); font-size:.9rem; }
+      @media (max-width: 900px) { .layout-opl { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand-logo" src="numilog-logo.png" alt="NUMILOG" />
+        <div>
+          <h1>Prévision de volumes &amp; planification OPL</h1>
+          <p class="subtitle">4 plateformes · oct. 2026 → 30 sept. 2027 · 100 % hors ligne</p>
+        </div>
+      </div>
+      <div class="top-meta">
+        <div><span>Plateforme</span><strong id="meta-plf">—</strong></div>
+        <div><span>Coupure</span><strong id="meta-cutoff">—</strong></div>
+        <div><span>Modèle</span><strong id="meta-model">—</strong></div>
+        <div><span>WAPE hebdo</span><strong id="meta-wape">—</strong></div>
+      </div>
+    </header>
+
+    <div id="mode-banner" class="mode-banner real">Lancez <code>run.bat</code> si les données n’apparaissent pas (génération de data.js).</div>
+
+    <div class="layout-opl">
+      <aside class="plf-rail" id="plf-rail"></aside>
+      <div>
+        <section class="toolbar">
+          <div class="toolbar-opl">
+            <label>Activité
+              <select id="filter-act"></select>
+            </label>
+            <label>Flux
+              <select id="filter-flow">
+                <option value="OUT">OUT</option>
+                <option value="IN">IN</option>
+              </select>
+            </label>
+            <label>Mesure OUT
+              <select id="filter-measure">
+                <option value="pal_colis">PAL + COLIS (défaut)</option>
+                <option value="pal" disabled>PAL seul (relancer pipeline)</option>
+                <option value="colis" disabled>COLIS seul (relancer pipeline)</option>
+              </select>
+            </label>
+            <label>Scénario OPL
+              <select id="filter-scenario">
+                <option value="p50">P50 central</option>
+                <option value="p80" selected>P80 prudent</option>
+                <option value="growth">Croissance manuelle</option>
+              </select>
+            </label>
+            <label>Coeff. croissance
+              <input id="growth" type="number" step="0.05" value="1.00" min="0.5" max="2" />
+            </label>
+          </div>
+        </section>
+
+        <nav class="nav" id="nav">
+          <button type="button" data-view="synthese" class="active">Synthèse</button>
+          <button type="button" data-view="historique">Historique</button>
+          <button type="button" data-view="qualite">Qualité</button>
+          <button type="button" data-view="previsions">Prévisions</button>
+          <button type="button" data-view="backtest">Backtesting</button>
+          <button type="button" data-view="opl">Besoin OPL</button>
+          <button type="button" data-view="params">Paramètres</button>
+        </nav>
+
+        <main>
+          <section class="view active" data-view="synthese">
+            <header class="view-hero">
+              <div>
+                <p class="view-kicker">Décider</p>
+                <h2>Synthèse</h2>
+                <p class="view-desc">12 prochains mois, variation vs historique, pic hebdomadaire, OPL au pic.</p>
+              </div>
+            </header>
+            <div class="kpis" id="kpi-row"></div>
+            <article class="card">
+              <h2>Historique + prévision (P50, bande P10–P90)</h2>
+              <div class="chart-box tall"><canvas id="chart-main"></canvas></div>
+            </article>
+          </section>
+
+          <section class="view" data-view="historique">
+            <header class="view-hero"><div><h2>Historique</h2><p class="view-desc">Série journalière réelle, jours fermés = 0.</p></div></header>
+            <article class="card">
+              <div class="chart-box tall"><canvas id="chart-hist"></canvas></div>
+            </article>
+            <article class="card">
+              <h2>Profil d’ouverture (jour de semaine)</h2>
+              <div id="open-profile"></div>
+            </article>
+          </section>
+
+          <section class="view" data-view="qualite">
+            <header class="view-hero"><div><h2>Qualité des données</h2><p class="view-desc">Anomalies : Garder conserve la valeur brute, Corriger applique le plafond.</p></div></header>
+            <article class="card">
+              <h2>Activités</h2>
+              <div class="table-wrap"><table class="data" id="table-acts"><thead><tr><th>PLF</th><th>ACT</th><th>Statut</th><th>Premier</th><th>Dernier</th><th class="num">Jours actifs</th></tr></thead><tbody></tbody></table></div>
+            </article>
+            <article class="card">
+              <h2>Journal d’anomalies</h2>
+              <p class="muted-note" id="anom-count"></p>
+              <div class="table-wrap tall"><table class="data" id="table-anom"><thead><tr><th>Date</th><th>PLF</th><th>ACT</th><th>Flux</th><th class="num">Brut</th><th class="num">Corrigé</th><th>Règle</th><th></th></tr></thead><tbody></tbody></table></div>
+            </article>
+            <article class="card">
+              <h2>Activités ignorées</h2>
+              <div id="ignored-box"></div>
+            </article>
+          </section>
+
+          <section class="view" data-view="previsions">
+            <header class="view-hero"><div><h2>Prévisions</h2><p class="view-desc">Jusqu’au 30/09/2027. Export CSV du tableau hebdomadaire.</p></div>
+              <button type="button" class="btn primary" id="btn-export">Exporter CSV</button>
+            </header>
+            <article class="card">
+              <div class="chart-box tall"><canvas id="chart-fc"></canvas></div>
+            </article>
+            <article class="card">
+              <div class="table-wrap tall"><table class="data" id="table-week"><thead><tr><th>Semaine</th><th class="num">P50</th><th class="num">P80</th><th class="num">Pic jour</th></tr></thead><tbody></tbody></table></div>
+            </article>
+          </section>
+
+          <section class="view" data-view="backtest">
+            <header class="view-hero"><div><h2>Backtesting</h2><p class="view-desc">Rolling-origin, métriques au niveau <strong>hebdomadaire</strong> (échelle d’effectif). WAPE = critère.</p></div></header>
+            <article class="card" id="bt-rank"></article>
+            <article class="card">
+              <h2>Origines de validation</h2>
+              <div id="bt-origins"></div>
+            </article>
+          </section>
+
+          <section class="view" data-view="opl">
+            <header class="view-hero"><div><h2>Besoin en OPL</h2><p class="view-desc">Calcul navigateur : volume / (prod × heures × postes) / (1 − absenteïsme). Pic de la semaine = dimensionnement.</p></div></header>
+            <article class="card">
+              <h2>Productivité (plateforme × activité × flux)</h2>
+              <div class="toolbar-opl">
+                <label>Unités / OPL / h <input id="prod" type="number" value="22" min="1" /></label>
+                <label>Heures / poste <input id="hours" type="number" value="6.5" step="0.5" /></label>
+                <label>Postes / jour <input id="shifts" type="number" value="1" min="1" max="3" /></label>
+                <label>Absenteïsme % <input id="abs" type="number" value="10" min="0" max="50" /></label>
+                <label>Effectif actuel (optionnel) <input id="staff-now" type="number" value="" placeholder="—" /></label>
+                <button type="button" class="btn" id="btn-prod-export">Export JSON</button>
+                <label class="btn file-btn">Import JSON<input id="prod-import" type="file" accept=".json" hidden /></label>
+              </div>
+            </article>
+            <div class="kpis" id="opl-kpis"></div>
+            <article class="card">
+              <h2>Besoin hebdomadaire (activité vs mutualisé plateforme)</h2>
+              <div class="chart-box"><canvas id="chart-opl"></canvas></div>
+            </article>
+            <article class="card">
+              <div class="table-wrap tall"><table class="data" id="table-opl"><thead><tr><th>Semaine</th><th class="num">Vol. P80</th><th class="num">Pic jour</th><th class="num">OPL activité</th><th class="num">OPL mutualisé*</th><th class="num">Écart effectif</th></tr></thead><tbody></tbody></table></div>
+              <p class="muted-note">* Mutualisé = somme des charges de toutes les activités de la plateforme, arrondie une fois.</p>
+            </article>
+          </section>
+
+          <section class="view" data-view="params">
+            <header class="view-hero"><div><h2>Paramètres</h2></div></header>
+            <article class="card">
+              <p>Mesure OUT par défaut du pipeline : <strong>PAL + COLIS</strong>. Sur 703 CEF, les colis dominent le total (&gt; 90 %). Les productivités doivent être dans la même unité que la mesure.</p>
+              <p>Dates de coupure : détectées automatiquement (derniers jours incomplets retirés). Pour les changer, relancez le pipeline après avoir tronqué les Excel.</p>
+              <p>Plateforme 105 CLR HA : activable ici (désactiver masque la barre latérale).</p>
+              <label><input type="checkbox" id="enable-105" checked /> Inclure 105 CLR HA</label>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="vendor/chart.umd.min.js"></script>
+    <script src="vendor/xlsx.full.min.js"></script>
+    <script src="data.js"></script>
+    <script src="js/ui.js"></script>
+  </body>
+</html>
