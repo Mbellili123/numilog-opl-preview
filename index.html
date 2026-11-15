@@ -472,6 +472,10 @@
               <label>Année
                 <select id="planner-year"></select>
               </label>
+              <label class="check" title="Désactivé par défaut : uniquement l'effectif réel saisi / importé">
+                <input type="checkbox" id="planner-allow-virtual" />
+                Compléter avec OPL virtuels
+              </label>
               <button type="button" class="btn primary" id="btn-planner-generate">Générer le planning</button>
               <div id="planner-export-group" class="planner-export" hidden>
                 <button type="button" class="btn" id="btn-planner-capture">Capture PNG</button>
@@ -486,7 +490,7 @@
             <button type="button" class="active" data-planner-tab="employees">1. Effectif</button>
             <button type="button" data-planner-tab="shifts">2. Besoins &amp; horaires</button>
             <button type="button" data-planner-tab="results">3. Planning</button>
-            <button type="button" data-planner-tab="help">Règles R1–R12</button>
+            <button type="button" data-planner-tab="help">Logique &amp; contraintes</button>
           </div>
 
           <div class="planner-tab active" data-planner-tab="employees">
@@ -601,21 +605,32 @@
 
           <div class="planner-tab" data-planner-tab="help">
             <article class="card">
-              <h2>Logique &amp; règles (R1–R12)</h2>
+              <h2>Logique du planning (pas un ordre R1→R12)</h2>
+              <p class="hint">Le moteur <strong>couvre d'abord l'activité</strong>, en respectant les contraintes sociales dures. Les congés / récup ne s'appliquent que sur le <em>surplus</em>.</p>
+              <h3>1 · Objectif</h3>
               <ul class="pattern-list">
-                <li><strong>R1</strong> — Respect des besoins prioritaires importés (Matin, AM, Nuit).</li>
-                <li><strong>R2</strong> — Jours non travaillés par défaut = Repos (R).</li>
-                <li><strong>R3</strong> — Attribution automatique de congés (C) selon le surplus d'effectif.</li>
-                <li><strong>R4</strong> — Priorité aux plus gros soldes de congés restants.</li>
-                <li><strong>R5</strong> — Alternance hebdomadaire des congés (éviter deux semaines de suite).</li>
-                <li><strong>R6</strong> — Cycle circadien : Matin → Après-midi → Nuit.</li>
-                <li><strong>R7</strong> — Reprise du cycle (M ou A) après une période de repos.</li>
-                <li><strong>R8</strong> — Blocage d'un shift sur 3 jours consécutifs minimum.</li>
-                <li><strong>R9</strong> — Repos obligatoire de 2 jours après un service de nuit.</li>
-                <li><strong>R10</strong> — Utilisation des récupérations (CP) si surplus et solde disponible.</li>
-                <li><strong>R11</strong> — Surplus sans solde congé/récup : l'employé reste sur son shift (S).</li>
-                <li><strong>R12</strong> — Régime 40 h : 5 jours travaillés et 2 repos par semaine.</li>
+                <li><strong>Couvrir l'activité</strong> — besoins Matin / Après-midi / Nuit (M / A / N) importés ou issus de l'OPL.</li>
               </ul>
+              <h3>2 · Contraintes sociales dures (toujours)</h3>
+              <ul class="pattern-list">
+                <li><strong>Repos après nuit</strong> — 2 jours de repos obligatoires après un service de nuit.</li>
+                <li><strong>Reprise après repos</strong> — redémarrage en Matin (puis Après-midi si besoin) ; pas de nuit juste après un repos post-nuit.</li>
+                <li><strong>Régime 40 h</strong> — 5 jours travaillés max et 2 repos par semaine.</li>
+                <li><strong>Effectif réel</strong> — pas d'OPL virtuels sauf case « Compléter avec OPL virtuels » cochée.</li>
+              </ul>
+              <h3>3 · Sur surplus seulement (activité déjà couverte)</h3>
+              <ul class="pattern-list">
+                <li><strong>Congés (C)</strong> — si surplus vs pic×régime ; priorité aux plus gros soldes ; éviter 2 semaines de suite.</li>
+                <li><strong>Récup (CP)</strong> — si surplus et solde disponible.</li>
+                <li><strong>Sinon repos (R)</strong> — défaut des jours non travaillés ; viser 2 repos / semaine.</li>
+                <li><strong>Surplus sans solde (S)</strong> — l'employé reste sur son shift si les repos de la semaine sont déjà couverts.</li>
+              </ul>
+              <h3>4 · Préférences (si l'activité le permet)</h3>
+              <ul class="pattern-list">
+                <li><strong>Cycle circadien</strong> — Matin → Après-midi → Nuit.</li>
+                <li><strong>Bloc 3 jours</strong> — stabiliser un même shift sur 3 jours consécutifs quand c'est possible.</li>
+              </ul>
+              <p class="hint"><strong>Priorité</strong> : s'il manque du monde pour l'activité, aucun congé / récup n'est posé (rappel possible le jour même).</p>
             </article>
           </div>
         </div>
