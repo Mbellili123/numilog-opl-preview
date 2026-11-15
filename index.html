@@ -3,10 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NUMILOG — Prévision d'activité & Workforce Planning</title>
-    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <script type="module" crossorigin src="./assets/index-DSgW2v7U.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CG_epe1i.css">
+    <title>CEVIFOOD — Prévision d'activité & Workforce Planning</title>
+    <link rel="icon" href="./assets/favicon-C8nwQdow.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@600&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="./assets/index-DSlUdNgQ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CyR_RFbg.css">
   </head>
   <body>
     <div id="loading" class="loading" hidden>
@@ -18,17 +21,17 @@
 
     <header class="topbar">
       <div class="brand">
-        <img class="brand-logo" src="./assets/numilog-logo-CeQFoVTp.png" alt="NUMILOG" />
+        <img class="brand-logo" src="./numilog-logo.png" alt="NUMILOG" />
         <div>
-          <h1 id="app-title">Prévision d'activité &amp; Workforce Planning</h1>
-          <p class="subtitle" id="app-subtitle">Volumes palettes et dimensionnement OPL</p>
+          <h1>CEVIFOOD — Prévision d'activité &amp; Workforce Planning</h1>
+          <p class="subtitle">Prévision des volumes palettes et dimensionnement des ressources de manutention</p>
         </div>
       </div>
       <div class="top-meta">
         <div><span>Historique</span><strong id="meta-range">—</strong></div>
         <div><span>Horizon</span><strong id="meta-horizon">—</strong></div>
         <div><span>Modèle</span><strong id="meta-model">—</strong></div>
-        <div><span id="meta-err-label">Erreur</span><strong id="meta-wape">—</strong></div>
+        <div><span>MAPE jour</span><strong id="meta-wape">—</strong></div>
       </div>
     </header>
 
@@ -37,12 +40,6 @@
     <section class="toolbar">
       <div class="toolbar-group">
         <span class="toolbar-label">Pilotage</span>
-        <label>Plateforme
-          <select id="filter-platform"></select>
-        </label>
-        <label>Activité
-          <select id="filter-activity"></select>
-        </label>
         <label>Horizon
           <select id="filter-horizon">
             <option value="7">7 jours</option>
@@ -70,9 +67,11 @@
         <span class="toolbar-label">Données</span>
         <label class="btn file-btn">Import IN<input type="file" id="file-in" accept=".xlsx,.xls,.csv" hidden /></label>
         <label class="btn file-btn">Import OUT<input type="file" id="file-out" accept=".xlsx,.xls,.csv" hidden /></label>
+        <button type="button" class="btn" id="btn-bundled">Recharger 703</button>
+        <a class="btn primary" href="./CEVIFOOD-portable.zip" download="CEVIFOOD-portable.zip">Télécharger pack HTML</a>
       </div>
     </section>
-    <p id="import-live" class="import-live" hidden></p>
+    <p id="import-live" class="import-live">CEVIFOOD (CEF+ICF) · palettes · calcul local</p>
 
     <div class="chrome-sticky">
     <nav class="nav" id="nav" aria-label="Parcours application">
@@ -94,6 +93,7 @@
       <div class="nav-group">
         <span class="nav-group-label">3 · Méthode</span>
         <button type="button" data-view="modeles">Modèles</button>
+        <button type="button" data-view="scenarios">Scénarios</button>
         <button type="button" data-view="donnees">Sources</button>
       </div>
     </nav>
@@ -121,6 +121,10 @@
       <span class="journey-sep muted" aria-hidden="true"></span>
       <button type="button" class="journey-step secondary" data-view="modeles">
         <span class="n">?</span><span class="t">Pourquoi ce modèle</span>
+      </button>
+      <span class="journey-sep muted" aria-hidden="true"></span>
+      <button type="button" class="journey-step secondary" data-view="scenarios">
+        <span class="n">?</span><span class="t">Scénarios mois</span>
       </button>
     </div>
     </div>
@@ -391,6 +395,34 @@
             </table>
           </div>
         </article>
+
+        <article class="card" id="monthly-forecast-card">
+          <div class="card-head">
+            <h2>Prévision par mois</h2>
+          </div>
+          <div id="monthly-forecast-note" class="hint"></div>
+          <div class="chart-box"><canvas id="chart-forecast-month"></canvas></div>
+          <div class="table-wrap">
+            <table id="table-forecast-month" class="data">
+              <thead>
+                <tr>
+                  <th>Mois</th>
+                  <th class="num">Jours</th>
+                  <th>Couverture</th>
+                  <th class="num">IN prévu</th>
+                  <th class="num">OUT prévu</th>
+                  <th class="num">Total prévu</th>
+                  <th class="num">Moy. / jour</th>
+                  <th class="num">OPL moy. / jour</th>
+                  <th class="num">MAPE mois</th>
+                  <th class="num">MAPE jour (réf.)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
         <div class="grid-2">
           <article class="card">
             <h2>Volume prévu par shift</h2>
@@ -433,9 +465,10 @@
                 <option value="basse">Basse (−10 %)</option>
                 <option value="base" selected>Base</option>
                 <option value="haute">Haute (+10 %)</option>
+                <option value="couverture82">Couverture 82 % (+25 %)</option>
               </select>
             </label>
-            <label class="check"><input name="excludeAnomaliesFromTraining" type="checkbox" checked /> Exclure / plafonner anomalies (recommandé)</label>
+            <label class="check"><input name="excludeAnomaliesFromTraining" type="checkbox" /> Exclure anomalies du training</label>
           </form>
           <p class="hint">What-if volume (choc sur la prévision, pas sur l'historique) :</p>
           <div class="shock-row" id="shock-row">
@@ -455,7 +488,7 @@
           <div>
             <p class="view-kicker">Étape 1 · Décider</p>
             <h2>Planning mensuel des OPL</h2>
-            <p class="view-desc">Besoins OPL de l'activité affichée → affectation Matin / Après-midi / Nuit.</p>
+            <p class="view-desc">NumiPlan : besoins OPL CEVIFOOD → affectation Matin / Après-midi / Nuit, congés, capture PNG.</p>
           </div>
           <div class="view-jumps">
             <button type="button" class="btn" data-jump="workforce">← Paramètres OPL</button>
@@ -472,11 +505,11 @@
               <label>Année
                 <select id="planner-year"></select>
               </label>
-              <button type="button" class="btn primary" id="btn-planner-generate">Générer le planning</button>
-              <label class="check" for="planner-allow-virtual">
+              <label class="check" title="Désactivé par défaut : uniquement l'effectif réel saisi / importé">
                 <input type="checkbox" id="planner-allow-virtual" />
                 Compléter avec OPL virtuels
               </label>
+              <button type="button" class="btn primary" id="btn-planner-generate">Générer le planning</button>
               <div id="planner-export-group" class="planner-export" hidden>
                 <button type="button" class="btn" id="btn-planner-capture">Capture PNG</button>
                 <button type="button" class="btn" id="btn-planner-excel">Excel</button>
@@ -490,7 +523,7 @@
             <button type="button" class="active" data-planner-tab="employees">1. Effectif</button>
             <button type="button" data-planner-tab="shifts">2. Besoins &amp; horaires</button>
             <button type="button" data-planner-tab="results">3. Planning</button>
-            <button type="button" data-planner-tab="help">Règles R1–R14</button>
+            <button type="button" data-planner-tab="help">Logique &amp; contraintes</button>
           </div>
 
           <div class="planner-tab active" data-planner-tab="employees">
@@ -507,6 +540,7 @@
                 </div>
                 <div class="actual-actions">
                   <button type="button" class="btn primary" id="btn-emp-add">Ajouter</button>
+                  <button type="button" class="btn" id="btn-emp-demo">Effectif démo</button>
                   <button type="button" class="btn" id="btn-emp-clear">Tout supprimer</button>
                 </div>
               </article>
@@ -548,7 +582,7 @@
               <article class="card">
                 <h2>Besoins opérationnels (OPL / jour)</h2>
                 <div class="actual-actions">
-                  <button type="button" class="btn primary" id="btn-needs-opl">Charger les besoins OPL</button>
+                  <button type="button" class="btn primary" id="btn-needs-opl">Charger depuis OPL CEVIFOOD</button>
                   <label class="btn file-btn">Importer Excel besoins
                     <input type="file" id="import-needs" accept=".xlsx,.xls,.csv" hidden />
                   </label>
@@ -576,21 +610,18 @@
           </div>
 
           <div class="planner-tab" data-planner-tab="results">
-            <article class="card planner-board" id="planner-capture">
+            <article class="card" id="planner-capture">
               <div class="print-only" id="print-header-title">Planning mensuel</div>
-              <div class="card-head planner-board-head">
-                <div>
-                  <p class="view-kicker" id="schedule-kicker">Planning</p>
-                  <h2 id="schedule-live-title">Tableau de bord mensuel</h2>
-                </div>
-                <div class="planner-legend no-capture">
+              <div class="card-head no-capture">
+                <h2>Tableau de bord mensuel</h2>
+                <div class="planner-legend">
                   <span class="shift shift-M">Matin</span>
                   <span class="shift shift-A">Après-midi</span>
                   <span class="shift shift-N">Nuit</span>
-                  <span class="shift shift-R">Repos</span>
-                  <span class="shift shift-S">Surplus</span>
-                  <span class="shift shift-C">Congé</span>
-                  <span class="shift shift-CP">Récup</span>
+                  <span class="shift shift-R">R repos</span>
+                  <span class="shift shift-S">S surplus</span>
+                  <span class="shift shift-C">C congé</span>
+                  <span class="shift shift-CP">CP récup</span>
                 </div>
               </div>
               <div class="planner-table-wrap">
@@ -605,23 +636,32 @@
 
           <div class="planner-tab" data-planner-tab="help">
             <article class="card">
-              <h2>Logique &amp; règles (R1–R14)</h2>
+              <h2>Logique du planning (pas un ordre R1→R12)</h2>
+              <p class="hint">Le moteur <strong>couvre d'abord l'activité</strong>, en respectant les contraintes sociales dures. Les congés / récup ne s'appliquent que sur le <em>surplus</em>.</p>
+              <h3>1 · Objectif</h3>
               <ul class="pattern-list">
-                <li><strong>R1</strong> — Respect des besoins prioritaires importés (Matin, AM, Nuit).</li>
-                <li><strong>R2</strong> — Jours non travaillés par défaut = Repos (R).</li>
-                <li><strong>R3</strong> — Attribution automatique de congés (C) selon le surplus d'effectif.</li>
-                <li><strong>R4</strong> — Priorité aux plus gros soldes de congés restants.</li>
-                <li><strong>R5</strong> — Alternance hebdomadaire des congés (éviter deux semaines de suite).</li>
-                <li><strong>R6</strong> — Cycle circadien : Matin → Après-midi → Nuit.</li>
-                <li><strong>R7</strong> — Reprise du cycle (M ou A) après une période de repos.</li>
-                <li><strong>R8</strong> — Blocage d'un shift sur 3 jours consécutifs minimum.</li>
-                <li><strong>R9</strong> — Repos obligatoire de 2 jours après un service de nuit.</li>
-                <li><strong>R10</strong> — Utilisation des récupérations (CP) si surplus et solde disponible.</li>
-                <li><strong>R11</strong> — Surplus sans solde congé/récup : l'employé reste sur son shift (S).</li>
-                <li><strong>R12</strong> — Régime 40 h : 5 jours travaillés et 2 repos par semaine.</li>
-                <li><strong>R13</strong> — Pas d'OPL virtuels par défaut : seuls les collaborateurs réels sont planifiés ; cocher « Compléter avec OPL virtuels » pour combler un manque d'effectif.</li>
-                <li><strong>R14</strong> — <em>Priorité activité</em> : en cas d'activité et de manque d'effectif, les congés / récup cèdent la place au besoin opérationnel (aucun C/CP tant que le pic n'est pas couvert ; rappel possible le jour même).</li>
+                <li><strong>Couvrir l'activité</strong> — besoins Matin / Après-midi / Nuit importés ou issus de l'OPL CEVIFOOD.</li>
               </ul>
+              <h3>2 · Contraintes sociales dures (toujours)</h3>
+              <ul class="pattern-list">
+                <li><strong>Repos après nuit</strong> — 2 jours de repos obligatoires après un service de nuit.</li>
+                <li><strong>Reprise après repos</strong> — redémarrage en Matin (puis Après-midi si besoin) ; pas de nuit juste après un repos.</li>
+                <li><strong>Régime 40 h</strong> — 5 jours travaillés max et 2 repos par semaine.</li>
+                <li><strong>Effectif réel</strong> — pas d'OPL virtuels sauf case « Compléter avec OPL virtuels » cochée.</li>
+              </ul>
+              <h3>3 · Sur surplus seulement (activité déjà couverte)</h3>
+              <ul class="pattern-list">
+                <li><strong>Congés (C)</strong> — si surplus vs pic×régime ; priorité aux plus gros soldes ; éviter 2 semaines de suite.</li>
+                <li><strong>Récup (CP)</strong> — si surplus et solde disponible.</li>
+                <li><strong>Surplus sans solde (S)</strong> — l'employé reste sur son shift.</li>
+                <li><strong>Sinon repos (R)</strong> — défaut des jours non travaillés.</li>
+              </ul>
+              <h3>4 · Préférences (si l'activité le permet)</h3>
+              <ul class="pattern-list">
+                <li><strong>Cycle circadien</strong> — Matin → Après-midi → Nuit.</li>
+                <li><strong>Bloc 3 jours</strong> — stabiliser un même shift sur 3 jours consécutifs quand c'est possible.</li>
+              </ul>
+              <p class="hint"><strong>Priorité</strong> : s'il manque du monde pour l'activité, aucun congé / récup n'est posé (rappel possible le jour même).</p>
             </article>
           </div>
         </div>
@@ -693,7 +733,7 @@
           <div>
             <p class="view-kicker">Étape 3 · Méthode</p>
             <h2>Performance des modèles</h2>
-            <p class="view-desc">Chaque lundi de 2026, les 7 jours sont prévus avec le réalisé déjà connu. C'est le plan d'effectif, jour par jour. Critère = MAPE jour.</p>
+            <p class="view-desc">Chaque lundi de 2026, les 7 jours sont prévus avec le réalisé déjà connu. Auto OPL = médiane / moyennes des mêmes jours. Naive, MA, Holt, Holt-Winters et SARIMA sont scorés à côté pour comparaison.</p>
           </div>
           <div class="view-jumps">
             <button type="button" class="btn" data-jump="calendrier">→ Calendrier DZ</button>
@@ -702,12 +742,23 @@
         </header>
         <div id="selection-box"></div>
         <article class="card">
-          <h2>Trois règles pour le jour de la semaine à programmer</h2>
+          <h2>Tous les modèles (même protocole lundi → 7 jours)</h2>
+          <p class="hint">Les lignes marquées <strong>OPL</strong> peuvent être retenues automatiquement. Les autres sont des benchmarks (naive, MA, Holt, SARIMA…).</p>
           <div class="chart-box"><canvas id="chart-models"></canvas></div>
           <div class="table-wrap">
             <table id="table-models" class="data">
               <thead>
-                <tr><th>Rang</th><th>Méthode</th><th class="num">MAPE jour</th><th class="num">MAPE semaine</th><th class="num">MAPE mois</th><th class="num">WAPE jour</th><th>Paramètres</th></tr>
+                <tr>
+                  <th>Rang</th>
+                  <th>Flux</th>
+                  <th>Méthode</th>
+                  <th>Rôle</th>
+                  <th class="num">MAPE jour</th>
+                  <th class="num">MAPE semaine</th>
+                  <th class="num">MAPE mois</th>
+                  <th class="num">WAPE jour</th>
+                  <th>Paramètres</th>
+                </tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -744,6 +795,83 @@
                   <th class="num">Réel/Prév. %</th>
                   <th class="num">Fiabilité %</th>
                   <th>Filtre</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- SCENARIOS MENSUELS -->
+      <section class="view" data-view="scenarios">
+        <header class="view-hero">
+          <div>
+            <p class="view-kicker">Étape 3 · Méthode</p>
+            <h2>Scénarios de prévision mensuelle</h2>
+            <p class="view-desc">
+              Trois approches seulement : somme des jours, mois direct, mois × ratio journalier.
+              Classées par MAPE des totaux mensuels (backtest 2026).
+            </p>
+          </div>
+          <div class="view-jumps">
+            <button type="button" class="btn" data-jump="modeles">← Modèles jour</button>
+            <button type="button" class="btn" data-jump="prevision">→ Prévision</button>
+          </div>
+        </header>
+        <div id="scenarios-selection"></div>
+        <article class="card">
+          <h2>Classement des 3 scénarios (TOTAL)</h2>
+          <div class="chart-box"><canvas id="chart-scenarios"></canvas></div>
+          <div class="table-wrap">
+            <table id="table-scenarios" class="data">
+              <thead>
+                <tr>
+                  <th>Rang</th>
+                  <th>Scénario</th>
+                  <th class="num">MAPE mois</th>
+                  <th class="num">WAPE mois</th>
+                  <th class="num">MAPE jour*</th>
+                  <th class="num">Mois testés</th>
+                  <th>Principe</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="hint" id="scenarios-note"></p>
+        </article>
+        <article class="card">
+          <h2>Détail mois par mois (backtest)</h2>
+          <div class="table-wrap">
+            <table id="table-scenarios-months" class="data">
+              <thead>
+                <tr>
+                  <th>Mois</th>
+                  <th class="num">Réel</th>
+                  <th class="num">Jours → mois</th>
+                  <th class="num">Mois direct</th>
+                  <th class="num">Mois × ratio</th>
+                  <th>Meilleur sur le mois</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="card">
+          <h2>Prévision mensuelle future (6 mois)</h2>
+          <div class="chart-box"><canvas id="chart-scenarios-future"></canvas></div>
+          <div class="table-wrap">
+            <table id="table-scenarios-future" class="data">
+              <thead>
+                <tr>
+                  <th>Mois</th>
+                  <th class="num">Jours</th>
+                  <th class="num">Jours → mois</th>
+                  <th class="num">Mois direct</th>
+                  <th class="num">Mois × ratio</th>
+                  <th class="num">Scénario retenu</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -852,7 +980,7 @@
     </div>
 
     <footer>
-      <span><strong>NUMILOG</strong> · prévision volumes &amp; OPL · calcul local navigateur</span>
+      <span><strong>NUMILOG</strong> · CEVIFOOD (CEF + ICF) · palettes uniquement · calcul local navigateur</span>
       <span>Le modèle n'est jamais « le meilleur » en absolu — il est retenu selon le critère WAPE multi-fenêtres.</span>
     </footer>
 
