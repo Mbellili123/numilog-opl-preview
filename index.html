@@ -473,6 +473,10 @@
                 <select id="planner-year"></select>
               </label>
               <button type="button" class="btn primary" id="btn-planner-generate">Générer le planning</button>
+              <label class="check" for="planner-allow-virtual">
+                <input type="checkbox" id="planner-allow-virtual" />
+                Compléter avec OPL virtuels
+              </label>
               <div id="planner-export-group" class="planner-export" hidden>
                 <button type="button" class="btn" id="btn-planner-capture">Capture PNG</button>
                 <button type="button" class="btn" id="btn-planner-excel">Excel</button>
@@ -486,7 +490,7 @@
             <button type="button" class="active" data-planner-tab="employees">1. Effectif</button>
             <button type="button" data-planner-tab="shifts">2. Besoins &amp; horaires</button>
             <button type="button" data-planner-tab="results">3. Planning</button>
-            <button type="button" data-planner-tab="help">Règles R1–R12</button>
+            <button type="button" data-planner-tab="help">Règles R1–R13</button>
           </div>
 
           <div class="planner-tab active" data-planner-tab="employees">
@@ -601,7 +605,7 @@
 
           <div class="planner-tab" data-planner-tab="help">
             <article class="card">
-              <h2>Logique &amp; règles (R1–R12)</h2>
+              <h2>Logique &amp; règles (R1–R13)</h2>
               <ul class="pattern-list">
                 <li><strong>R1</strong> — Respect des besoins prioritaires importés (Matin, AM, Nuit).</li>
                 <li><strong>R2</strong> — Jours non travaillés par défaut = Repos (R).</li>
@@ -615,6 +619,7 @@
                 <li><strong>R10</strong> — Utilisation des récupérations (CP) si surplus et solde disponible.</li>
                 <li><strong>R11</strong> — Surplus sans solde congé/récup : l'employé reste sur son shift (S).</li>
                 <li><strong>R12</strong> — Régime 40 h : 5 jours travaillés et 2 repos par semaine.</li>
+                <li><strong>R13</strong> — Pas d'OPL virtuels par défaut : seuls les collaborateurs réels sont planifiés ; cocher « Compléter avec OPL virtuels » pour combler un manque d'effectif.</li>
               </ul>
             </article>
           </div>
